@@ -26,7 +26,6 @@ data = []
 
 # http://news.sciencenet.cn/upload/news/images/2018/3/2018327153946110.jpg
 def g_pic(url, header):
-    print url
     try:
         sub_html = HttpUtil.g_html(url, header)
         # print sub_html
@@ -57,8 +56,10 @@ def feed(url):
 
             # generate content
             img = g_pic(url, header)
-            text = "#### %s \n  ###### 链接： %s \n ###### 发布时间：%s \n" % (row['title'], url, pubdate)
+
+            text = "#### [%s](%s) \n ###### 发布时间：%s \n" % (row['title'], url, pubdate)
             if img:
+                print img
                 text = "%s ![](%s) \n " % (text, img)
             row['text'] = "%s > %s" % (text, description)
 
