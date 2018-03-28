@@ -6,8 +6,7 @@ from com.lingh.util import HttpUtil
 from bs4 import BeautifulSoup
 import json
 import sys
-import re
-from urlparse import urlparse
+import selenium_util
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -34,7 +33,7 @@ def g_pic(url, header):
 
         if bs.table and bs.table.find('img'):
             return "http://%s%s" % (domain, bs.table.find('img')['src'])
-        return ""
+        return None
     except Exception as e:
         print e
 
@@ -53,9 +52,12 @@ def feed(url):
             # print bs1.category.text
             # print bs1.guid.text
             description = bs1.description.text
-
+            print url
             # generate content
             img = g_pic(url, header)
+            # print img
+            if not img:
+                img = selenium_util.g_img_url(url)
 
             text = "#### [%s](%s) \n ###### 发布时间：%s \n" % (row['title'], url, pubdate)
             if img:
@@ -67,18 +69,30 @@ def feed(url):
     except Exception as e:
         print e
 
-feed('http://www.sciencenet.cn/xml/news-0.aspx?news=0')
-# feed("http://www.adaymag.com/feed")
-# feed("http://www.duxieren.com/duxieren.xml")
-# feed("http://www.matrix67.com/blog/feed")
+def send_msg():
+    feed_list=[
+        'http://www.ifanr.com/feed'
+        # 'https://fotomen.cn/feed/'#,
+        # 'http://www.dushumashang.com/feed',
+        # 'http://www.duxieren.com/duxieren.xml'
+    ]
 
-send_url = 'https://oapi.dingtalk.com/robot/send?access_token=3d1fa7c56de3c10b5e1257b8802526ec1e9021338c7914c76eede6e2193e6914'
-for d in data:
-    try:
-        textmod = json.dumps({ "markdown": d, "msgtype": "markdown" })
-        print HttpUtil.p_json(send_url, textmod, header)
-        time.sleep(2)
-    except Exception as e:
-        print e
+    for source in feed_list:
+        feed(source)
 
-# print g_pic('http://news.sciencenet.cn/htmlnews/2018/3/407125.shtm',header)
+    # feed('http://www.sciencenet.cn/xml/news-0.aspx?news=0')
+    # feed("http://www.adaymag.com/feed")
+    # feed("http://www.duxieren.com/duxieren.xml")
+    # feed("http://www.matrix67.com/blog/feed")
+
+    send_url = 'https://oapi.dingtalk.com/robot/send?access_token=3d1fa7c56de3c10b5e1257b8802526ec1e9021338c7914c76eede6e2193e6914'
+    for d in data:
+        try:
+            textmod = json.dumps({ "markdown": d, "msgtype": "markdown" })
+            print HttpUtil.p_json(send_url, textmod, header)
+            time.sleep(2)
+        except Exception as e:
+            print e
+
+send_msg()
+# print selenium_util.g_img_url('http://www.ifanr.com/1002843?utm_source=rss&utm_medium=rss&utm_campaign=')
