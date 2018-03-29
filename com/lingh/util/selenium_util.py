@@ -6,7 +6,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 
 def g_img_url(pageURL):
-    driver = Chrome('C:\\Users\\admin\\node_modules\\chromedriver\\lib\\chromedriver\\chromedriver.exe') # 调用浏览器
+    driver = Chrome('D:\\work\\makedown\\blog\\publish_news\\chromedriver.exe') # 调用浏览器
     driver.get(pageURL)
     try:
         WebDriverWait(driver, 5).until(lambda x: x.find_element_by_tag_name('main') or x.find_element_by_tag_name("section") or x.find_element_by_tag_name("table") or x.find_element_by_tag_name("article"))

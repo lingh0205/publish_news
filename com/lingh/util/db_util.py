@@ -4,7 +4,7 @@
 from com.lingh.model.db_model import subscribe_url
 import MySQLdb
 
-conn = MySQLdb.connect("localhost","root","admin","publish_news", charset='utf8')
+conn = MySQLdb.connect("10.158.192.173","root","yundun","publish_news", charset='utf8')
 
 def check(conn):
     try:
@@ -70,18 +70,21 @@ def c_subscribe():
     check(conn)
     cursor = conn.cursor()
     cursor.execute(sql_subscribe_url)
+    conn.commit()
     print "create table subscribe_url success."
 
 def c_rss():
     check(conn)
     cursor = conn.cursor()
     cursor.execute(sql_rss)
+    conn.commit()
     print "create table rss success."
 
 def c_account():
     check(conn)
     cursor = conn.cursor()
     cursor.execute(sql_account)
+    conn.commit()
     print "create table account success."
 
 def insert(sql):
@@ -153,3 +156,8 @@ def list_rss(uid):
     # print select_one('http://www.zreading.cn/archives/6321.html')
 
 # print select_account_by_name('LinGH')
+
+# c_database()
+# c_subscribe()
+# c_account()
+# c_rss()

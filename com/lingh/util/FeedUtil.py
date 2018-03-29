@@ -34,8 +34,32 @@ def g_pic(url, header):
         domain = HttpUtil.g_host(url)
         bs = BeautifulSoup(sub_html, "html.parser")
 
-        if bs.table and bs.table.find('img'):
-            return "http://%s%s" % (domain, bs.table.find('img')['src'])
+        for tag in ['figure', "xd-b-left", "article", "main", "section", "table"]:
+            f_list = bs.find_all(tag)
+
+            if not f_list:
+                f_list = bs.find_all("div", _class = tag)
+
+            if not f_list or len(f_list) == 0:
+                continue
+            for figure in f_list:
+                f_bs = BeautifulSoup(str(figure), "html.parser")
+                for img in f_bs.find_all("img"):
+                    if img:
+                        try:
+                            height = img['height']
+                            if int(height) >= 300:
+                                return img['src']
+                        except Exception as e:
+                            print e
+
+                        try:
+                            width = img['width']
+                            if int(width) >= 400:
+                                return img['src']
+                        except Exception as e:
+                            print e
+
         return None
     except Exception as e:
         print e
@@ -98,8 +122,9 @@ def send_msg():
         except Exception as e:
             print e
 
-    for subscribe in subscribe_list:
-        db_util.insert_subscribe(subscribe)
-
-send_msg()
+    # for subscribe in subscribe_list:
+    #     db_util.insert_subscribe(subscribe)
+for i in range(100):
+    send_msg()
+    time.sleep(5)
 # print selenium_util.g_img_url('http://www.ifanr.com/1002843?utm_source=rss&utm_medium=rss&utm_campaign=')
