@@ -2,7 +2,9 @@
 # -*- coding:utf-8 -*-
 import time
 
+from com.lingh.model.db_model import subscribe_url
 from com.lingh.util import HttpUtil
+from com.lingh.util import db_util
 from bs4 import BeautifulSoup
 import json
 import sys
@@ -22,6 +24,7 @@ header = {
 }
 
 data = []
+subscribe_list = []
 
 # http://news.sciencenet.cn/upload/news/images/2018/3/2018327153946110.jpg
 def g_pic(url, header):
@@ -37,62 +40,66 @@ def g_pic(url, header):
     except Exception as e:
         print e
 
-def feed(url):
+def feed(url, uid):
     try:
         file = g_feed(url, header)
         bs = BeautifulSoup(file, "html.parser")
+        p_title = bs.title
+        p_description = bs.description
         items = bs.find_all('item')
+        row = {}
+        text = ""
         for item in items:
-            row = {}
             bs1 = BeautifulSoup(str(item), "html.parser")
             row['title'] = bs1.title.text
             url = bs1.link.next_element.replace("\n", "")
-            # print bs1.comments.text
+
+            count = db_util.count_subscribe_by_url(url, uid)
+            # 不需要重复处理
+            if count and count > 0:
+                continue
+
             pubdate = bs1.pubdate.text
-            # print bs1.category.text
-            # print bs1.guid.text
             description = bs1.description.text
             print url
             # generate content
             img = g_pic(url, header)
-            # print img
+
             if not img:
                 img = selenium_util.g_img_url(url)
 
-            text = "#### [%s](%s) \n ###### 发布时间：%s \n" % (row['title'], url, pubdate)
+            text = "%s ### %s | %s \n #### [%s](%s) \n ###### 发布时间：%s \n" % (text, p_title, p_description, row['title'], url, pubdate)
             if img:
                 print img
                 text = "%s ![](%s) \n " % (text, img)
-            row['text'] = "%s > %s" % (text, description)
+            row['text'] = "%s > %s \n \n" % (text, description)
 
-            data.append(row)
+            subscribe_list.append(subscribe_url(url, uid, row['title'], p_title, pubdate, img))
+        data.append(row)
     except Exception as e:
         print e
 
 def send_msg():
-    feed_list=[
-        'http://www.ifanr.com/feed'
-        # 'https://fotomen.cn/feed/'#,
-        # 'http://www.dushumashang.com/feed',
-        # 'http://www.duxieren.com/duxieren.xml'
-    ]
+    user = db_util.select_account_by_name('LinGH')
+    uid = user[0]
+    send_url = user[4]
+    feed_list = db_util.list_rss(uid)
 
     for source in feed_list:
-        feed(source)
+        feed(source, uid)
 
-    # feed('http://www.sciencenet.cn/xml/news-0.aspx?news=0')
-    # feed("http://www.adaymag.com/feed")
-    # feed("http://www.duxieren.com/duxieren.xml")
-    # feed("http://www.matrix67.com/blog/feed")
-
-    send_url = 'https://oapi.dingtalk.com/robot/send?access_token=3d1fa7c56de3c10b5e1257b8802526ec1e9021338c7914c76eede6e2193e6914'
     for d in data:
         try:
             textmod = json.dumps({ "markdown": d, "msgtype": "markdown" })
-            print HttpUtil.p_json(send_url, textmod, header)
+            resp = HttpUtil.p_json(send_url, textmod, header)
+            print json.loads(resp)['errcode']
+            print json.loads(resp)['errmsg']
             time.sleep(2)
         except Exception as e:
             print e
+
+    for subscribe in subscribe_list:
+        db_util.insert_subscribe(subscribe)
 
 send_msg()
 # print selenium_util.g_img_url('http://www.ifanr.com/1002843?utm_source=rss&utm_medium=rss&utm_campaign=')

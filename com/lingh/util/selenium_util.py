@@ -11,37 +11,50 @@ def g_img_url(pageURL):
     try:
         WebDriverWait(driver, 5).until(lambda x: x.find_element_by_tag_name('main') or x.find_element_by_tag_name("section") or x.find_element_by_tag_name("table") or x.find_element_by_tag_name("article"))
     except Exception as e:
-        print e
+        pass
 
     p_element = None
     img = None
 
     try:
-        p_element = driver.find_element_by_tag_name("main") # 找到相应的标签。
+        if not p_element:
+            p_element =driver.find_element_by_tag_name("figure")
     except Exception as e:
-        print e
+        pass
 
     try:
         if not p_element:
-            p_element = driver.find_element_by_tag_name("section")
+            p_element =driver.find_element_by_class_name("xd-b-left")
     except Exception as e:
-        print e
-
-    try:
-        if not p_element:
-            p_element = driver.find_element_by_tag_name("table")
-    except Exception as e:
-        print e
+        pass
 
     try:
         if not p_element:
             p_element =driver.find_element_by_tag_name("article")
     except Exception as e:
-        print e
+        pass
+
+    try:
+        p_element = driver.find_element_by_tag_name("main") # 找到相应的标签。
+    except Exception as e:
+        pass
+
+    try:
+        if not p_element:
+            p_element = driver.find_element_by_tag_name("section")
+    except Exception as e:
+        pass
+
+    try:
+        if not p_element:
+            p_element = driver.find_element_by_tag_name("table")
+    except Exception as e:
+        pass
+
     try:
         img = p_element.find_element_by_tag_name("img")
     except Exception as e:
-        print e
+        pass
 
     if img:
         return img.get_attribute('src')# 打印出属性为『src』的内容
