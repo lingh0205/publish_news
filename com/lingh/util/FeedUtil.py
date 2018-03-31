@@ -1,15 +1,18 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 import time
-from com.lingh.model.db_model import subscribe_url
-from com.lingh.util import HttpUtil
-from com.lingh.util import db_util
-from com.lingh.model import mode, code
 from bs4 import BeautifulSoup
 import json
 import sys
 import selenium_util
 import argparse
+
+sys.path.append('/home/linguohua/github/publish_news/');
+
+from com.lingh.model.db_model import subscribe_url
+from com.lingh.util import HttpUtil
+from com.lingh.util import db_util
+from com.lingh.model import mode, code
 
 reload(sys)
 sys.setdefaultencoding('utf-8')

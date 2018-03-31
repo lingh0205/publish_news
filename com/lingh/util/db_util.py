@@ -1,24 +1,24 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 
-import MySQLdb
+import sqlite3
 import re
 
-conn = MySQLdb.connect("10.158.192.173","root","yundun","publish_news", charset='utf8')
+conn = sqlite3.connect("publish_news")
 
 def check(conn):
     try:
         conn.ping()
     except Exception as e:  # 实际对应的  MySQLdb.OperationalError 这个异常
-        conn = MySQLdb.connect("localhost","root","admin","publish_news", charset='utf-8')
+        conn = sqlite3.connect("publish_news")
 
 sql_c_publish_news = """CREATE DATABASE IF NOT EXISTS `publish_news`;"""
 
 sql_subscribe_url = """CREATE TABLE `subscribe_url` (
-	`id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+	`id` BIGINT(20) NOT NULL,
 	`gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`gmt_modified` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-	`url` VARCHAR(128) NOT NULL DEFAULT '""',
+	`gmt_modified` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`url` VARCHAR(128) NOT NULL DEFAULT '',
 	`uid` BIGINT(20) NOT NULL,
 	`p_title` VARCHAR(256) NULL DEFAULT NULL,
 	`p_description` VARCHAR(256) NULL DEFAULT NULL,
@@ -26,8 +26,8 @@ sql_subscribe_url = """CREATE TABLE `subscribe_url` (
 	`description` TEXT NULL,
 	`pub_date` VARCHAR(50) NULL DEFAULT NULL,
 	`img` VARCHAR(128) NULL DEFAULT NULL,
-	`send_status` TINYINT(1) UNSIGNED ZEROFILL NULL DEFAULT '0' COMMENT '0：未发送，1：已发送，2：跳过',
-	`retry_times` TINYINT(1) UNSIGNED ZEROFILL NULL DEFAULT '0',
+	`send_status` TINYINT(1) NULL DEFAULT '0',
+	`retry_times` TINYINT(1) NULL DEFAULT '0',
 	PRIMARY KEY (`id`),
 	UNIQUE INDEX `uk_uid_url` (`uid`, `url`)
 )
@@ -37,9 +37,9 @@ ENGINE=InnoDB
 """
 
 sql_rss = """CREATE TABLE IF NOT EXISTS `rss` (
-	`id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+	`id` BIGINT(20) NOT NULL,
 	`gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`gmt_modified` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	`gmt_modified` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`rss_url` VARCHAR(128) NOT NULL,
 	`uid` BIGINT(20) NOT NULL,
 	`description` VARCHAR(256) NULL DEFAULT NULL,
@@ -52,9 +52,9 @@ ENGINE=InnoDB
 ;"""
 
 sql_account = """CREATE TABLE IF NOT EXISTS `account` (
-	`id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+	`id` BIGINT(20) NOT NULL,
 	`gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`gmt_modified` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	`gmt_modified` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`name` VARCHAR(50) NOT NULL,
 	`notify_url` VARCHAR(128) NOT NULL,
 	`status` TINYINT(4) NOT NULL DEFAULT '1',
@@ -66,14 +66,13 @@ ENGINE=InnoDB
 ;"""
 
 sql_key_word = """CREATE TABLE `key_word` (
-	`id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+	`id` BIGINT(20) NOT NULL,
 	`gmt_create` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`gmt_modified` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	`gmt_modified` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`key` VARCHAR(50) NOT NULL,
 	`uid` BIGINT(20) NOT NULL,
-	`category` VARCHAR(50) NULL DEFAULT '“”' COMMENT '类型过滤：空表示所有',
-	`type` TINYINT(1) NOT NULL DEFAULT '0' COMMENT '0：订阅，1：过滤',
-	`status` TINYINT(1) NOT NULL DEFAULT '0' COMMENT '0：未生效，1：使用中',
+	`category` VARCHAR(50) NULL DEFAULT '',
+	`status` TINYINT(1) NOT NULL DEFAULT '0',
 	PRIMARY KEY (`id`),
 	UNIQUE INDEX `uk_key_uid_category` (`key`, `uid`, `category`)
 )
@@ -131,15 +130,15 @@ def insert(sql):
 
 def insert_subscribe(subscribe):
     # SQL 插入语句
-    insert("""INSERT INTO subscribe_url VALUES (NULL , NOW(), NOW(), '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', 0, 0)""" % (subscribe.url, subscribe.uid, subscribe.p_title, subscribe.p_description, subscribe.title, subscribe.description, subscribe.pub_date, subscribe.img))
+    insert("""INSERT INTO subscribe_url VALUES (NULL , date('now'), date('now'), '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', 0, 0)""" % (subscribe.url, subscribe.uid, subscribe.p_title, subscribe.p_description, subscribe.title, subscribe.description, subscribe.pub_date, subscribe.img))
 
 def insert_rss(rss):
     # SQL 插入语句
-    insert("""INSERT INTO rss VALUES (NULL , NOW(), NOW(), '%s', '%s', '%s', '%s')""" % (rss.rss_url,rss.uid, rss.description, rss.status))
+    insert("""INSERT INTO rss VALUES (NULL , date('now'), date('now'), '%s', '%s', '%s', '%s')""" % (rss.rss_url,rss.uid, rss.description, rss.status))
 
 def insert_account(account):
     # SQL 插入语句
-    insert("""INSERT INTO account VALUES (NULL , NOW(), NOW(), '%s', '%s', '%s')""" % (account.name, account.notify_url, account.status))
+    insert("""INSERT INTO account VALUES (NULL , date('now'), date('now'), '%s', '%s', '%s')""" % (account.name, account.notify_url, account.status))
 
 def select_one(sql):
     check(conn)
@@ -150,7 +149,7 @@ def select_one(sql):
         cursor.execute(sql)
         res = cursor.fetchone()
     except:
-       print "Error: unable to fecth data"
+       print "Error: unable to fecth data with sql %s" % sql
     return res
 
 def select_account_by_name(name):
@@ -174,7 +173,7 @@ def select_all(sql):
         cursor.execute(sql)
         res = cursor.fetchall()
     except:
-        print "Error: unable to fecth data"
+        print "Error: unable to fecth data with sql %s" % sql
     return res
 
 def list_rss(uid):
@@ -187,23 +186,24 @@ def update_status(items):
     check(conn)
     cursor = conn.cursor()
     for item in items:
-        cursor.execute("update subscribe_url set send_status = 1 where uid = '%s' and url = '%s'" % (item[4], item[3]))
+        cursor.execute("update subscribe_url set send_status = 1 and gmt_modified = date('now') where uid = '%s' and url = '%s'" % (item[4], item[3]))
     conn.commit()
 
 def update_retry_times(items):
     check(conn)
     cursor = conn.cursor()
     for item in items:
-        cursor.execute("update subscribe_url set retry_times = retry_times + 1 where uid = '%s' and url = '%s'" % (item[4], item[3]))
+        cursor.execute("update subscribe_url set retry_times = retry_times + 1 and gmt_modified = date('now') where uid = '%s' and url = '%s'" % (item[4], item[3]))
     conn.commit()
 
 def list_ignore_key(uid, category):
-    return [ x[0] for x in select_all("""select `key` from key_word where uid='%s' and `category` = '%s' or `category` = 'all' and `status` = 1""" % (uid, re.sub("'", r"\'", category)))]
+    return [ x[0] for x in select_all("""select `key` from key_word where uid='%s' and `category` = '%s' or `category` = 'all' and `status` = 1""" % (uid, re.sub("'", r"#", category)))]
 
-# c_database()
-# c_subscribe()
-# c_account()
-# c_rss()
-
+#c_database()
+#c_subscribe()
+#c_account()
+#c_rss()
+#c_key()
 # print list_key(1, "生活", 0)
 
+#print list_rss(1)
