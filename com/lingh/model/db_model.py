@@ -3,11 +3,13 @@
 
 class subscribe_url(object):
 
-    def __init__(self, url, uid, title, p_title, pub_date, img):
+    def __init__(self, url, uid, title, description, p_title, p_description, pub_date, img):
         self.url = url
         self.uid = uid
         self.title = title
+        self.description = description
         self.p_title = p_title
+        self.p_description = p_description
         self.pub_date = pub_date
         self.img = img
 

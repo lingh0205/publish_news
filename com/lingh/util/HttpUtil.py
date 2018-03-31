@@ -2,7 +2,6 @@
 # -*- coding:utf-8 -*-
 import urllib
 import urllib2
-import json
 
 def g_html(url, header=None):
     req = urllib2.Request(url=url, headers=header)

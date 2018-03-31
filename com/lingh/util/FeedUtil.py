@@ -1,14 +1,15 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 import time
-
 from com.lingh.model.db_model import subscribe_url
 from com.lingh.util import HttpUtil
 from com.lingh.util import db_util
+from com.lingh.model import mode, code
 from bs4 import BeautifulSoup
 import json
 import sys
 import selenium_util
+import argparse
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -26,12 +27,10 @@ header = {
 data = []
 subscribe_list = []
 
-# http://news.sciencenet.cn/upload/news/images/2018/3/2018327153946110.jpg
 def g_pic(url, header):
     try:
         sub_html = HttpUtil.g_html(url, header)
         # print sub_html
-        domain = HttpUtil.g_host(url)
         bs = BeautifulSoup(sub_html, "html.parser")
 
         for tag in ['figure', "xd-b-left", "article", "main", "section", "table"]:
@@ -64,18 +63,48 @@ def g_pic(url, header):
     except Exception as e:
         print e
 
+def is_ignore(title, description, ignore):
+    if (title and str(title).__contains__(ignore)) or (description and str(description).__contains__(ignore)):
+        return True
+    else:
+        return False
+
+def ignore(bs, description, p_title, p_description, title, url):
+    categorys = bs.find_all("category")
+    if categorys:
+        for category in categorys:
+            category = category.text
+            ignores = db_util.list_ignore_key(uid, category)
+            for ignore in ignores:
+                if is_ignore(title, description, ignore):
+                    print "[WARN]Ignore key word %s with subscribe by category %s msg %s | %s | %s | %s." % (
+                    ignore, category, p_title, p_description, title, url)
+                    return code.ignore
+    else:
+        ignores = db_util.list_ignore_key(uid, code.all)
+        for ignore in ignores:
+            if is_ignore(title, description, ignore):
+                print "[WARN]Ignore key word %s with subscribe msg %s | %s | %s | %s." % (ignore, p_title, p_description, title, url)
+                return code.ignore
+    return code.subscribe
+
 def feed(url, uid):
     try:
         file = g_feed(url, header)
         bs = BeautifulSoup(file, "html.parser")
+        print "[INFO]Start to subscribe for user %d with url : %s" % (uid, url)
         p_title = bs.title
         p_description = bs.description
+
         items = bs.find_all('item')
-        row = {}
-        text = ""
         for item in items:
             bs1 = BeautifulSoup(str(item), "html.parser")
-            row['title'] = bs1.title.text
+            title = bs1.title.text
+            description = bs1.description.text
+
+            if code.ignore == ignore(bs, description, p_title, p_description, title, url):
+                continue
+
             url = bs1.link.next_element.replace("\n", "")
 
             count = db_util.count_subscribe_by_url(url, uid)
@@ -84,47 +113,107 @@ def feed(url, uid):
                 continue
 
             pubdate = bs1.pubdate.text
-            description = bs1.description.text
-            print url
+
             # generate content
-            img = g_pic(url, header)
+            img = bs1.image
+            if img:
+                img = img.text
+            else:
+                img = g_pic(url, header)
 
             if not img:
                 img = selenium_util.g_img_url(url)
 
-            text = "%s ### %s | %s \n #### [%s](%s) \n ###### 发布时间：%s \n" % (text, p_title, p_description, row['title'], url, pubdate)
-            if img:
-                print img
-                text = "%s ![](%s) \n " % (text, img)
-            row['text'] = "%s > %s \n \n" % (text, description)
-
-            subscribe_list.append(subscribe_url(url, uid, row['title'], p_title, pubdate, img))
-        data.append(row)
+            print "[INFO]Subcribe %s | %s | %s | %s success." % (p_title, p_description, title, url)
+            db_util.insert_subscribe(subscribe_url(url, uid, title, description, p_title, p_description, pubdate, img))
     except Exception as e:
         print e
 
-def send_msg():
+def g_uid(name):
     user = db_util.select_account_by_name('LinGH')
-    uid = user[0]
-    send_url = user[4]
-    feed_list = db_util.list_rss(uid)
+    if user:
+        return user[0],user[4]
+    return 0, ""
 
+def generate_msg(uid, items):
+    text = ""
+    p_title = ""
+
+    for item in items:
+        if not p_title:
+            p_title = item[5]
+
+        text = "%s ### %s | %s \n #### [%s](%s) \n ###### 发布时间：%s \n" % (text, item[5], item[6], item[7], item[3], item[9])
+        if item[10]:
+            text = "%s ![](%s) \n " % (text, item[10])
+
+        text = "%s > %s \n \n" % (text, item[8])
+
+        print "[INFO]Generate publish msg for %s | %s | %s | %s " % (item[5], item[6], item[7], item[3])
+
+    return p_title,text
+
+def parse_argu():
+    parser = argparse.ArgumentParser(description='manual to this script')
+    parser.add_argument('--mode', type=str, default="subscribe")
+    parser.add_argument('--user', type=str, default="LinGH")
+    args = parser.parse_args()
+    return args.mode, args.user
+
+def subscribe(uid):
+    feed_list = db_util.list_rss(uid)
     for source in feed_list:
         feed(source, uid)
+    print "[INFO]Finish to subcribe for user %d." % uid
 
-    for d in data:
-        try:
-            textmod = json.dumps({ "markdown": d, "msgtype": "markdown" })
-            resp = HttpUtil.p_json(send_url, textmod, header)
-            print json.loads(resp)['errcode']
-            print json.loads(resp)['errmsg']
-            time.sleep(2)
-        except Exception as e:
-            print e
+def send_msg(uid, send_url):
+    items = db_util.list_subcribe(uid)
 
-    # for subscribe in subscribe_list:
-    #     db_util.insert_subscribe(subscribe)
-for i in range(100):
-    send_msg()
-    time.sleep(5)
-# print selenium_util.g_img_url('http://www.ifanr.com/1002843?utm_source=rss&utm_medium=rss&utm_campaign=')
+    if len(items) <= 0:
+        return code.finish
+
+    p_title, text = generate_msg(uid, items)
+
+    md = {
+        "title": p_title,
+        "text": text
+    }
+
+    try:
+        textmod = json.dumps({"markdown": md, "msgtype": "markdown"})
+        resp = HttpUtil.p_json(send_url, textmod, header)
+        if int(json.loads(resp)['errcode']) == 0:
+            print "[RESULT]%s" % resp
+            db_util.update_status(items)
+        else:
+            db_util.update_retry_times(items)
+            print "[ERROR]Publish news failed, Cause by : %s" % json.loads(resp)['errmsg']
+        time.sleep(2)
+    except Exception as e:
+        print e
+
+    return code.success
+
+def publish(uid, send_url):
+    start = (int(time.time()))
+    while True:
+        time_out =  int(time.time()) - start
+        flag = send_msg(uid, send_url)
+        if time_out > 60 or flag == code.failure:
+            print "[ERROR]Failed to publish msg. Cause by time out is %d and flag is %d" % (time_out, flag)
+            break
+        elif flag == code.finish:
+            print "[INFO]Finish to publish msg!"
+            break
+
+
+if __name__ == "__main__":
+    mod, name = parse_argu()
+    print "[INFO]Start to %s for user %s ......" % (mod, name)
+    uid, send_url = g_uid(name)
+    if mode.subscribe == mod:
+        subscribe(uid)
+    elif mode.publish == mod:
+        publish(uid, send_url)
+
+
