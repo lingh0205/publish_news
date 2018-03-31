@@ -50,14 +50,14 @@ def g_pic(url, header):
                     if img:
                         try:
                             height = img['height']
-                            if int(height) >= 300:
+                            if str(height) == "auto" or int(height) >= 300:
                                 return img['src']
                         except Exception as e:
                             print e
 
                         try:
                             width = img['width']
-                            if int(width) >= 400:
+                            if str(width) == "auto" or int(width) >= 400:
                                 return img['src']
                         except Exception as e:
                             print e
@@ -97,12 +97,20 @@ def feed(url, uid):
         bs = BeautifulSoup(file, "html.parser")
         print "[INFO]Start to subscribe for user %d with url : %s" % (uid, url)
         p_title = bs.title
+
+        if p_title:
+            p_title = p_title.text.strip()
+
         p_description = bs.description
 
         items = bs.find_all('item')
         for item in items:
             bs1 = BeautifulSoup(str(item), "html.parser")
             title = bs1.title.text
+            
+            if title:
+                title = title.strip()
+
             description = bs1.description.text
 
             if code.ignore == ignore(bs, description, p_title, p_description, title, url):
@@ -150,7 +158,10 @@ def generate_msg(uid, items):
         if item[10]:
             text = "%s ![](%s) \n " % (text, item[10])
 
-        text = "%s > %s \n \n" % (text, item[8])
+        descript = item[8]
+        if len(descript) > 100:
+            descript = descript[1:100]
+        text = "%s > %s \n \n" % (text, descript)
 
         print "[INFO]Generate publish msg for %s | %s | %s | %s " % (item[5], item[6], item[7], item[3])
 
