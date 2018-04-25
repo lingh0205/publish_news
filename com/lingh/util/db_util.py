@@ -158,7 +158,7 @@ def select_account_by_name(name):
     return res
 
 def count_subscribe_by_url(url, uid):
-    sql = """SELECT COUNT(*) FROM subscribe_url WHERE url = '%s' and uid = '%s'""" % (url, uid)
+    sql = """SELECT COUNT(*) FROM subscribe_url WHERE url like '%s%%' and uid = '%s'""" % (url, uid)
     res = select_one(sql)
     if res:
         res = res[0]

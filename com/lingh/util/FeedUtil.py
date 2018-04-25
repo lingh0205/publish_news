@@ -36,11 +36,14 @@ def g_pic(url, header):
         # print sub_html
         bs = BeautifulSoup(sub_html, "html.parser")
 
-        for tag in ['figure', "xd-b-left", "article", "main", "section", "table"]:
+        for tag in ['figure', "xd-b-left", "article", "main", "section", "table", "content"]:
             f_list = bs.find_all(tag)
 
             if not f_list:
                 f_list = bs.find_all("div", _class = tag)
+        
+            if not f_list:
+                f_list = bs.find_all(id=tag)
 
             if not f_list or len(f_list) == 0:
                 continue
@@ -132,8 +135,8 @@ def feed(url, uid):
             else:
                 img = g_pic(url, header)
 
-            if not img:
-                img = selenium_util.g_img_url(url)
+            #if not img:
+            #    img = selenium_util.g_img_url(url)
 
             print "[INFO]Subcribe %s | %s | %s | %s success." % (p_title, p_description, title, url)
             db_util.insert_subscribe(subscribe_url(url, uid, title, description, p_title, p_description, pubdate, img))
@@ -195,6 +198,7 @@ def send_msg(uid, send_url):
 
     try:
         textmod = json.dumps({"markdown": md, "msgtype": "markdown"})
+	print textmod
         resp = HttpUtil.p_json(send_url, textmod, header)
         if int(json.loads(resp)['errcode']) == 0:
             print "[RESULT]%s" % resp
