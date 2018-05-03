@@ -185,15 +185,19 @@ def list_subcribe(uid):
 def update_status(items):
     check(conn)
     cursor = conn.cursor()
+    
     for item in items:
-        cursor.execute("update subscribe_url set send_status = 1 and gmt_modified = date('now') where uid = '%s' and url = '%s'" % (item[4], item[3]))
+        print "[ID]:%d" % item[0]
+        print "update subscribe_url set send_status = 1 where id = '%d'" % item[0]
+        cursor.execute("update subscribe_url set send_status = 1 where id = '%d'" % item[0])
     conn.commit()
 
 def update_retry_times(items):
     check(conn)
     cursor = conn.cursor()
     for item in items:
-        cursor.execute("update subscribe_url set retry_times = retry_times + 1 and gmt_modified = date('now') where uid = '%s' and url = '%s'" % (item[4], item[3]))
+        print "[ID]:%d" % item[0]
+        cursor.execute("update subscribe_url set retry_times = retry_times + 1 where id = '%d'" % item[0])
     conn.commit()
 
 def list_ignore_key(uid, category):
@@ -207,3 +211,5 @@ def list_ignore_key(uid, category):
 # print list_key(1, "生活", 0)
 
 #print list_rss(1)
+#print select_account_by_name('LinGH')
+

@@ -119,7 +119,7 @@ def feed(url, uid):
             if code.ignore == ignore(bs, description, p_title, p_description, title, url):
                 continue
 
-            url = bs1.link.next_element.replace("\n", "")
+            url = bs1.link.next_element.replace("\n", "").strip()
 
             count = db_util.count_subscribe_by_url(url, uid)
             # 不需要重复处理
@@ -189,6 +189,8 @@ def send_msg(uid, send_url):
     if len(items) <= 0:
         return code.finish
 
+    print len(items)
+
     p_title, text = generate_msg(uid, items)
 
     md = {
@@ -220,7 +222,7 @@ def publish(uid, send_url):
         if time_out > 60 or flag == code.failure:
             print "[ERROR]Failed to publish msg. Cause by time out is %d and flag is %d" % (time_out, flag)
             break
-        elif flag == code.finish:
+        elif flag == code.finish or flag == code.success:
             print "[INFO]Finish to publish msg!"
             break
 
